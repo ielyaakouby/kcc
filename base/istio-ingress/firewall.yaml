@@ -1,0 +1,33 @@
+# =============================================================================
+# Firewall — Allow HTTP/HTTPS + Istio Health Checks
+# =============================================================================
+# Allows inbound traffic to the Istio Ingress Gateway:
+#   - Port 80  (HTTP)
+#   - Port 443 (HTTPS)
+#   - Port 15021 (Istio health checks from GCP load balancers)
+# =============================================================================
+apiVersion: compute.cnrm.cloud.google.com/v1beta1
+kind: ComputeFirewall
+metadata:
+  name: unleash-allow-istio-ingress
+  namespace: unleash-system
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/managed-by: kcc
+    app.kubernetes.io/component: ingress
+spec:
+  networkRef:
+    external: "projects/__PROJECT_ID__/global/networks/unleash-vpc"
+  direction: INGRESS
+  priority: 1000
+  description: "Allow HTTP, HTTPS, and Istio health check traffic"
+  allow:
+    - protocol: TCP
+      ports:
+        - "80"
+        - "443"
+        - "15021"
+  sourceRanges:
+    - "0.0.0.0/0"
+  targetTags:
+    - "unleash-istio-ingress"

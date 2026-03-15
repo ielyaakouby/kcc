@@ -1,0 +1,19 @@
+# =============================================================================
+# Cloud DNS Managed Zone
+# =============================================================================
+# Creates a Cloud DNS zone for the Unleash domain.
+# ExternalDNS will automatically create A records in this zone.
+# =============================================================================
+apiVersion: dns.cnrm.cloud.google.com/v1beta1
+kind: DNSManagedZone
+metadata:
+  name: unleash-dns-zone
+  namespace: unleash-system
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/managed-by: kcc
+    app.kubernetes.io/component: dns
+spec:
+  description: "DNS zone for Unleash feature flag platform"
+  dnsName: "bein-cloud.com."
+  visibility: "public"

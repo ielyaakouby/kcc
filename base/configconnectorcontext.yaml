@@ -1,0 +1,14 @@
+# =============================================================================
+# ConfigConnectorContext — Enable KCC for unleash-system namespace
+# =============================================================================
+# Required when Config Connector runs in 'namespaced' mode (default on GKE).
+# Each namespace needs a ConfigConnectorContext to tell KCC which GCP SA
+# to use for provisioning resources in that namespace.
+# =============================================================================
+apiVersion: core.cnrm.cloud.google.com/v1beta1
+kind: ConfigConnectorContext
+metadata:
+  name: configconnectorcontext.core.cnrm.cloud.google.com
+  namespace: unleash-system
+spec:
+  googleServiceAccount: "cnrm-system@__PROJECT_ID__.iam.gserviceaccount.com"

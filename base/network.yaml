@@ -1,0 +1,43 @@
+# =============================================================================
+# Networking — Private Service Access for CloudSQL
+# =============================================================================
+# The VPC and Subnet are created by the `gke` command via gcloud.
+# This manifest only creates the Private Service Access resources
+# needed for CloudSQL private IP connectivity.
+# =============================================================================
+
+---
+# --- Reserved IP Range for Private Service Access ---
+apiVersion: compute.cnrm.cloud.google.com/v1beta1
+kind: ComputeAddress
+metadata:
+  name: unleash-psa-range
+  namespace: unleash-system
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/managed-by: kcc
+spec:
+  location: global
+  purpose: VPC_PEERING
+  addressType: INTERNAL
+  prefixLength: 16
+  networkRef:
+    external: "projects/aghouchaf/global/networks/unleash-vpc"
+  description: "IP range reserved for Private Service Access (CloudSQL)"
+
+---
+# --- Private Service Access Connection ---
+apiVersion: servicenetworking.cnrm.cloud.google.com/v1beta1
+kind: ServiceNetworkingConnection
+metadata:
+  name: unleash-psa-connection
+  namespace: unleash-system
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/managed-by: kcc
+spec:
+  networkRef:
+    external: "projects/aghouchaf/global/networks/unleash-vpc"
+  reservedPeeringRanges:
+    - name: unleash-psa-range
+  service: "servicenetworking.googleapis.com"

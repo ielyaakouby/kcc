@@ -1,0 +1,22 @@
+# =============================================================================
+# Google-Managed SSL Certificate
+# =============================================================================
+# Auto-provisions and auto-renews a TLS certificate for the Unleash domain.
+# The certificate is managed by Google and uses Let's Encrypt.
+# =============================================================================
+apiVersion: compute.cnrm.cloud.google.com/v1beta1
+kind: ComputeManagedSSLCertificate
+metadata:
+  name: unleash-ssl-cert
+  namespace: unleash-system
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/managed-by: kcc
+    app.kubernetes.io/component: ingress
+spec:
+  description: "Google-managed SSL certificate for Unleash"
+  projectRef:
+    external: "projects/__PROJECT_ID__"
+  managed:
+    domains:
+      - "unleash.bein-cloud.com"

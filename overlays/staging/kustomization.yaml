@@ -1,0 +1,17 @@
+# =============================================================================
+# KCC STAGING — Moderate CloudSQL tier, backups enabled
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  - target:
+      kind: SQLInstance
+      name: unleash-db-instance
+    patch: |
+      - op: replace
+        path: /spec/settings/tier
+        value: db-custom-1-3840

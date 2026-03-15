@@ -1,0 +1,61 @@
+# =============================================================================
+# IAM — ExternalDNS Service Account & Permissions
+# =============================================================================
+# Creates a GCP SA for ExternalDNS with dns.admin role and Workload Identity
+# binding so the K8s ServiceAccount can manage Cloud DNS records.
+# =============================================================================
+
+---
+# --- GCP IAM Service Account for ExternalDNS ---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMServiceAccount
+metadata:
+  name: external-dns-sa
+  namespace: unleash-system
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/managed-by: kcc
+    app.kubernetes.io/component: dns
+spec:
+  displayName: "ExternalDNS Service Account"
+  description: "Service account for ExternalDNS to manage Cloud DNS records"
+
+---
+# --- Grant DNS Admin Role ---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: external-dns-sa-dns-admin
+  namespace: unleash-system
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/managed-by: kcc
+    app.kubernetes.io/component: dns
+spec:
+  member: "serviceAccount:external-dns-sa@__PROJECT_ID__.iam.gserviceaccount.com"
+  role: roles/dns.admin
+  resourceRef:
+    apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+    kind: Project
+    external: "projects/__PROJECT_ID__"
+
+---
+# --- Workload Identity Binding ---
+# Allows the K8s SA "external-dns" in namespace "external-dns"
+# to act as the GCP SA "external-dns-sa".
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: external-dns-sa-workload-identity
+  namespace: unleash-system
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/managed-by: kcc
+    app.kubernetes.io/component: dns
+spec:
+  member: "serviceAccount:__PROJECT_ID__.svc.id.goog[external-dns/external-dns]"
+  role: roles/iam.workloadIdentityUser
+  resourceRef:
+    apiVersion: iam.cnrm.cloud.google.com/v1beta1
+    kind: IAMServiceAccount
+    name: external-dns-sa

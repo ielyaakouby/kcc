@@ -1,0 +1,59 @@
+# =============================================================================
+# IAM — Service Account & Workload Identity
+# =============================================================================
+# Creates a GCP IAM Service Account for the Unleash workload, grants
+# Cloud SQL Client role, and configures Workload Identity binding so
+# the K8s ServiceAccount can impersonate the GCP SA.
+# =============================================================================
+
+---
+# --- GCP IAM Service Account ---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMServiceAccount
+metadata:
+  name: unleash-sa
+  namespace: unleash-system
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/managed-by: kcc
+spec:
+  displayName: "Unleash Application Service Account"
+  description: "Service account for the Unleash feature flag platform"
+
+---
+# --- Grant Cloud SQL Client Role ---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: unleash-sa-cloudsql-client
+  namespace: unleash-system
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/managed-by: kcc
+spec:
+  member: "serviceAccount:unleash-sa@__PROJECT_ID__.iam.gserviceaccount.com"
+  role: roles/cloudsql.client
+  resourceRef:
+    apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+    kind: Project
+    external: "projects/__PROJECT_ID__"
+
+---
+# --- Workload Identity Binding ---
+# Allows the K8s ServiceAccount "unleash" in namespace "unleash"
+# to act as the GCP SA "unleash-sa".
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: unleash-sa-workload-identity
+  namespace: unleash-system
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/managed-by: kcc
+spec:
+  member: "serviceAccount:__PROJECT_ID__.svc.id.goog[unleash/unleash-sa]"
+  role: roles/iam.workloadIdentityUser
+  resourceRef:
+    apiVersion: iam.cnrm.cloud.google.com/v1beta1
+    kind: IAMServiceAccount
+    name: unleash-sa

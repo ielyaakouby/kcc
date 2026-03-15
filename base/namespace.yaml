@@ -1,0 +1,15 @@
+# =============================================================================
+# KCC Namespace
+# =============================================================================
+# All KCC-managed GCP resources for Unleash are created in this namespace.
+# The annotation links this namespace to the target GCP project.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: unleash-system
+  annotations:
+    cnrm.cloud.google.com/project-id: "aghouchaf"
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/managed-by: kcc

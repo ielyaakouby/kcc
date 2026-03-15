@@ -1,0 +1,20 @@
+# =============================================================================
+# Static External IP — Istio Ingress Gateway
+# =============================================================================
+# Reserves a static external IP for the Istio Ingress Gateway LoadBalancer.
+# This ensures the IP persists across redeployments and can be used for DNS.
+# =============================================================================
+apiVersion: compute.cnrm.cloud.google.com/v1beta1
+kind: ComputeAddress
+metadata:
+  name: unleash-ingress-ip
+  namespace: unleash-system
+  annotations:
+    cnrm.cloud.google.com/deletion-policy: "abandon"
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/managed-by: kcc
+    app.kubernetes.io/component: ingress
+spec:
+  location: __REGION__
+  description: "Static IP for Unleash Istio Ingress Gateway"

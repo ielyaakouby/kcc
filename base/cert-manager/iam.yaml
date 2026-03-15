@@ -1,0 +1,62 @@
+# =============================================================================
+# IAM — cert-manager DNS01 Solver Service Account
+# =============================================================================
+# cert-manager needs Cloud DNS access for ACME DNS01 challenges
+# (proving domain ownership by creating TXT records).
+# =============================================================================
+
+---
+# --- GCP IAM Service Account for cert-manager ---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMServiceAccount
+metadata:
+  name: cert-manager-sa
+  namespace: unleash-system
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/managed-by: kcc
+    app.kubernetes.io/component: cert-manager
+spec:
+  displayName: "cert-manager Service Account"
+  description: "Service account for cert-manager DNS01 solver on Cloud DNS"
+
+---
+# --- Grant DNS Admin Role (on Project) ---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: cert-manager-sa-dns-admin
+  namespace: unleash-system
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/managed-by: kcc
+    app.kubernetes.io/component: cert-manager
+spec:
+  member: "serviceAccount:cert-manager-sa@__PROJECT_ID__.iam.gserviceaccount.com"
+  role: roles/dns.admin
+  resourceRef:
+    apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+    kind: Project
+    external: "projects/__PROJECT_ID__"
+
+---
+# --- Workload Identity Binding ---
+# Allows K8s SA "cert-manager" in namespace "cert-manager"
+# to act as GCP SA "cert-manager-sa".
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: cert-manager-sa-workload-identity
+  namespace: unleash-system
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/managed-by: kcc
+    app.kubernetes.io/component: cert-manager
+spec:
+  member: "serviceAccount:__PROJECT_ID__.svc.id.goog[cert-manager/cert-manager]"
+  role: roles/iam.workloadIdentityUser
+  resourceRef:
+    apiVersion: iam.cnrm.cloud.google.com/v1beta1
+    kind: IAMServiceAccount
+    name: cert-manager-sa
+

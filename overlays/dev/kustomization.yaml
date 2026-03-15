@@ -1,0 +1,26 @@
+# =============================================================================
+# KCC DEV — Minimal CloudSQL, no backups, ZONAL
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  - target:
+      kind: SQLInstance
+      name: unleash-db-instance
+    patch: |
+      - op: replace
+        path: /spec/settings/tier
+        value: db-f1-micro
+      - op: replace
+        path: /spec/settings/backupConfiguration/enabled
+        value: false
+      - op: replace
+        path: /spec/settings/backupConfiguration/pointInTimeRecoveryEnabled
+        value: false
+      - op: replace
+        path: /spec/settings/availabilityType
+        value: ZONAL

@@ -1,0 +1,20 @@
+# =============================================================================
+# KCC PROD — HA CloudSQL, large tier, REGIONAL availability
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  - target:
+      kind: SQLInstance
+      name: unleash-db-instance
+    patch: |
+      - op: replace
+        path: /spec/settings/tier
+        value: db-custom-2-7680
+      - op: replace
+        path: /spec/settings/availabilityType
+        value: REGIONAL
