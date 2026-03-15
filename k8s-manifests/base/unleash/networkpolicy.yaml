@@ -1,0 +1,49 @@
+# =============================================================================
+# NetworkPolicy — Unleash
+# =============================================================================
+# Restricts traffic to/from Unleash pods:
+# - Ingress: only port 4242 (HTTP)
+# - Egress: DNS (53) + PostgreSQL (5432) + HTTPS (443 for GCP APIs)
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: unleash
+  namespace: unleash
+  labels:
+    app.kubernetes.io/name: unleash
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: unleash
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: unleash
+      app.kubernetes.io/component: server
+  policyTypes:
+    - Ingress
+    - Egress
+
+  # --- Allow inbound on port 4242 from any source ---
+  ingress:
+    - ports:
+        - port: 4242
+          protocol: TCP
+
+  # --- Allow outbound to DNS, PostgreSQL, and GCP APIs ---
+  egress:
+    # DNS resolution (kube-dns)
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+
+    # PostgreSQL (CloudSQL private IP)
+    - ports:
+        - port: 5432
+          protocol: TCP
+
+    # HTTPS — for GCP metadata, Workload Identity, logging
+    - ports:
+        - port: 443
+          protocol: TCP

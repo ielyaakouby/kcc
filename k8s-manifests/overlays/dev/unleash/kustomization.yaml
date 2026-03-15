@@ -1,0 +1,69 @@
+# =============================================================================
+# DEV/unleash — Single replicas, minimal resources, debug logging
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+patches:
+  # ── Unleash: 1 replica, minimal resources, debug ──
+  - target:
+      kind: Deployment
+      name: unleash
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: unleash
+    patch: |
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 2
+  - target:
+      kind: ConfigMap
+      name: unleash-config
+    patch: |
+      - op: add
+        path: /data/LOG_LEVEL
+        value: "debug"
+
+  # ── Edge: 1 replica, minimal resources ──
+  - target:
+      kind: Deployment
+      name: unleash-edge
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 128Mi
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: unleash-edge
+    patch: |
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 3

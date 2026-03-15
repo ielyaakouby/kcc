@@ -1,0 +1,84 @@
+# =============================================================================
+# cert-manager — Installation + ClusterIssuer + Certificate
+# =============================================================================
+# Installs cert-manager CRDs and configures Let's Encrypt SSL
+# with DNS01 challenge via Cloud DNS.
+# =============================================================================
+
+---
+# --- Namespace ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cert-manager
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/part-of: unleash
+
+---
+# --- ServiceAccount (Workload Identity) ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cert-manager
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/part-of: unleash
+  annotations:
+    iam.gke.io/gcp-service-account: "cert-manager-sa@__PROJECT_ID__.iam.gserviceaccount.com"
+
+---
+# --- ClusterIssuer — Let's Encrypt (Production) ---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  labels:
+    app.kubernetes.io/part-of: unleash
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@bein-cloud.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - dns01:
+          cloudDNS:
+            project: __PROJECT_ID__
+
+---
+# --- ClusterIssuer — Let's Encrypt (Staging, for testing) ---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+  labels:
+    app.kubernetes.io/part-of: unleash
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@bein-cloud.com
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - dns01:
+          cloudDNS:
+            project: __PROJECT_ID__
+
+---
+# --- Certificate for Unleash ---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: unleash-tls
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/part-of: unleash
+spec:
+  secretName: unleash-tls-credential
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - "unleash.bein-cloud.com"

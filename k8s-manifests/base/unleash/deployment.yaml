@@ -1,0 +1,154 @@
+# =============================================================================
+# Unleash Deployment + ServiceAccount
+# =============================================================================
+# Deploys the Unleash open source server with:
+# - Workload Identity (GCP SA impersonation)
+# - Health probes on /health
+# - Resource requests/limits
+# - Anti-affinity for HA
+# =============================================================================
+
+---
+# --- Kubernetes Service Account (Workload Identity) ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: unleash-sa
+  namespace: unleash
+  labels:
+    app.kubernetes.io/name: unleash
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: unleash
+  annotations:
+    # Workload Identity: link K8s SA → GCP SA
+    iam.gke.io/gcp-service-account: "unleash-sa@aghouchaf.iam.gserviceaccount.com"
+
+---
+# --- Deployment ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unleash
+  namespace: unleash
+  labels:
+    app.kubernetes.io/name: unleash
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/version: "6.6"
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: unleash
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: unleash
+        app.kubernetes.io/component: server
+        app.kubernetes.io/part-of: unleash
+    spec:
+      serviceAccountName: unleash-sa
+      terminationGracePeriodSeconds: 30
+
+      # --- Anti-affinity: spread pods across nodes ---
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: unleash
+                    app.kubernetes.io/component: server
+                topologyKey: kubernetes.io/hostname
+
+      # --- Security Context ---
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+
+      containers:
+        - name: unleash
+          image: unleashorg/unleash-server:6.6
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4242
+              protocol: TCP
+
+          # --- Environment: ConfigMap values ---
+          envFrom:
+            - configMapRef:
+                name: unleash-config
+
+          # --- Environment: Secret values ---
+          env:
+            - name: DATABASE_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: unleash-db-credentials
+                  key: host
+            - name: DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: unleash-db-credentials
+                  key: username
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: unleash-db-credentials
+                  key: password
+
+          # --- Health Probes ---
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            failureThreshold: 30          # Allow up to 2.5 min for DB migrations
+            timeoutSeconds: 3
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 0
+            periodSeconds: 15
+            failureThreshold: 3
+            timeoutSeconds: 5
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 0
+            periodSeconds: 5
+            failureThreshold: 3
+            timeoutSeconds: 3
+
+          # --- Resources ---
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+
+          # --- Security ---
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL

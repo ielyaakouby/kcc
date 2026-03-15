@@ -1,0 +1,77 @@
+# =============================================================================
+# Istio Gateway + VirtualService — Unleash Traffic Routing
+# =============================================================================
+# Configures the Istio Ingress Gateway to route external traffic:
+#   - unleash.bein-cloud.com → Unleash Server (:4242)
+#   - unleash.bein-cloud.com/edge → Unleash Edge (:3063)
+#
+# HTTP allows direct access via LoadBalancer IP (wildcard host).
+# HTTPS is enabled for when the TLS certificate is provisioned.
+# =============================================================================
+
+---
+# --- Istio Gateway ---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: unleash-gateway
+  namespace: unleash
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/component: ingress
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    # ── HTTP (direct access — allows IP-based access) ──
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "unleash.bein-cloud.com"
+        - "*"
+    # ── HTTPS (when TLS certificate is ready) ──
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      hosts:
+        - "unleash.bein-cloud.com"
+      tls:
+        mode: SIMPLE
+        credentialName: unleash-tls-credential
+
+---
+# --- VirtualService — Unleash Server ---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: unleash-vs
+  namespace: unleash
+  labels:
+    app.kubernetes.io/part-of: unleash
+    app.kubernetes.io/component: server
+spec:
+  hosts:
+    - "*"
+  gateways:
+    - unleash-gateway
+  http:
+    # ── Route /edge prefix to Unleash Edge ──
+    - match:
+        - uri:
+            prefix: /edge
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: unleash-edge.unleash.svc.cluster.local
+            port:
+              number: 3063
+    # ── Default route to Unleash Server ──
+    - route:
+        - destination:
+            host: unleash.unleash.svc.cluster.local
+            port:
+              number: 4242

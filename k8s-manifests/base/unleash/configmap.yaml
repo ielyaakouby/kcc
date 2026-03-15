@@ -1,0 +1,26 @@
+# =============================================================================
+# ConfigMap — Unleash Application Configuration
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unleash-config
+  namespace: unleash
+  labels:
+    app.kubernetes.io/name: unleash
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: unleash
+data:
+  # --- Database ---
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: "unleash"
+  DATABASE_SSL: "false"              # Set to "true" if CloudSQL SSL is required
+
+  # --- Unleash Server ---
+  UNLEASH_URL: "http://unleash.unleash.svc.cluster.local:4242/api"
+  LOG_LEVEL: "info"                  # debug | info | warn | error
+  UNLEASH_DEFAULT_ADMIN_USERNAME: "admin"
+
+  # --- Server Settings ---
+  HTTP_PORT: "4242"
+  HTTP_HOST: "0.0.0.0"

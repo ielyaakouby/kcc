@@ -1,0 +1,22 @@
+# =============================================================================
+# Unleash Service — ClusterIP
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: unleash
+  namespace: unleash
+  labels:
+    app.kubernetes.io/name: unleash
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: unleash
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: unleash
+    app.kubernetes.io/component: server
+  ports:
+    - name: http
+      port: 4242
+      targetPort: http
+      protocol: TCP

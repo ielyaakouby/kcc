@@ -1,0 +1,128 @@
+# =============================================================================
+# ExternalDNS — Deployment + ServiceAccount + RBAC
+# =============================================================================
+# Watches Istio Gateway/VirtualService resources and syncs DNS records
+# to Google Cloud DNS automatically.
+# Uses Workload Identity to authenticate with GCP.
+# =============================================================================
+
+---
+# --- Namespace ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: external-dns
+  labels:
+    app.kubernetes.io/name: external-dns
+    app.kubernetes.io/part-of: unleash
+
+---
+# --- ServiceAccount (Workload Identity) ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: external-dns
+  namespace: external-dns
+  labels:
+    app.kubernetes.io/name: external-dns
+    app.kubernetes.io/part-of: unleash
+  annotations:
+    iam.gke.io/gcp-service-account: "external-dns-sa@__PROJECT_ID__.iam.gserviceaccount.com"
+
+---
+# --- ClusterRole ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: external-dns
+  labels:
+    app.kubernetes.io/name: external-dns
+rules:
+  - apiGroups: [""]
+    resources: ["services", "endpoints", "pods", "nodes"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["extensions", "networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["networking.istio.io"]
+    resources: ["gateways", "virtualservices"]
+    verbs: ["get", "watch", "list"]
+
+---
+# --- ClusterRoleBinding ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: external-dns
+  labels:
+    app.kubernetes.io/name: external-dns
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: external-dns
+subjects:
+  - kind: ServiceAccount
+    name: external-dns
+    namespace: external-dns
+
+---
+# --- Deployment ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: external-dns
+  namespace: external-dns
+  labels:
+    app.kubernetes.io/name: external-dns
+    app.kubernetes.io/part-of: unleash
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: external-dns
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: external-dns
+        app.kubernetes.io/part-of: unleash
+    spec:
+      serviceAccountName: external-dns
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+
+      containers:
+        - name: external-dns
+          image: registry.k8s.io/external-dns/external-dns:v0.14.2
+          args:
+            - --source=istio-gateway
+            - --source=istio-virtualservice
+            - --provider=google
+            - --google-project=__PROJECT_ID__
+            - --google-zone-visibility=public
+            - --domain-filter=bein-cloud.com
+            - --registry=txt
+            - --txt-owner-id=unleash-external-dns
+            - --txt-prefix=_externaldns.
+            - --policy=upsert-only
+            - --log-level=info
+            - --interval=1m
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL

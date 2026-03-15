@@ -1,0 +1,73 @@
+# =============================================================================
+# Ingress — GCE L7 Load Balancer (optional)
+# =============================================================================
+# Exposes Unleash externally via a Google Cloud L7 HTTP(S) Load Balancer.
+# Uncomment the TLS / ManagedCertificate sections for HTTPS.
+#
+# If you don't need external access, skip this file and use:
+#   kubectl port-forward svc/unleash 4242:4242 -n unleash
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: unleash
+  namespace: unleash
+  labels:
+    app.kubernetes.io/name: unleash
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: unleash
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    # --- Health check path for the backend ---
+    cloud.google.com/backend-config: '{"default": "unleash-backend-config"}'
+    # --- Uncomment for managed HTTPS certificate ---
+    # networking.gke.io/managed-certificates: "unleash-managed-cert"
+    # kubernetes.io/ingress.allow-http: "false"
+spec:
+  # --- TLS (uncomment and configure for HTTPS) ---
+  # tls:
+  #   - hosts:
+  #       - unleash.example.com
+  rules:
+    - # Remove 'host' for IP-based access, or set your domain:
+      # host: unleash.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: unleash
+                port:
+                  number: 4242
+
+---
+# --- BackendConfig for GCE health checks ---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: unleash-backend-config
+  namespace: unleash
+  labels:
+    app.kubernetes.io/name: unleash
+    app.kubernetes.io/part-of: unleash
+spec:
+  healthCheck:
+    checkIntervalSec: 15
+    timeoutSec: 5
+    healthyThreshold: 1
+    unhealthyThreshold: 3
+    type: HTTP
+    requestPath: /health
+    port: 4242
+
+# ---
+# # Uncomment for Google-managed HTTPS certificate
+# apiVersion: networking.gke.io/v1
+# kind: ManagedCertificate
+# metadata:
+#   name: unleash-managed-cert
+#   namespace: unleash
+# spec:
+#   domains:
+#     - unleash.example.com
